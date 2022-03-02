@@ -40,7 +40,7 @@ class Player:
                 self.walk_cooldown = self.walk_cooldown_max
 
 def main():
-    player = Player(1, 1)
+    player = Player(15//2, 9//2)
     while True:
         screen.fill("#FFFFFF")
 
