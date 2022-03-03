@@ -19,9 +19,24 @@ class Enemy(pygame.sprite.Sprite):
 		self.image = pygame.Surface((tile_size, tile_size))
 		self.wepimg = pygame.Surface((tile_size, tile_size))
 		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
+		self.target = True # true for player, false for anti
+		self.targetcool = 1
+		self.sight = 10
 		
-	def update(self):
-		self.x += randint(-1,1)
+	def update(self, pl):
+		self.targetcool -= 1
+		if self.targetcool <= 0:
+			self.target = bool(randint(0, 1))
+			self.targetcool = 32
+		player = (pl if self.target else Player(width/16-pl.x,pl.y))
+		xmove = self.x + ((-abs(self.x - player.x)/(self.x - player.x)) if (self.x - player.x) != 0 else 0)
+		ymove = self.y + ((-abs(self.y - player.y)/(self.y - player.y)) if (self.y - player.y) != 0 else 0)
+		distx = ((player.x-xmove)**2 + (player.y-self.y)**2)**0.5 + randint(-self.sight, self.sight)
+		disty = ((player.x-self.x)**2 + (player.y-ymove)**2)**0.5 + randint(-self.sight, self.sight)
+		if distx < disty:
+			self.x = xmove
+		else:
+			self.y = ymove
 		
 		
 		
@@ -75,12 +90,13 @@ def main():
 				pygame.quit()
 				sys.exit()
 
-		enim_group.update()
-		enim_group.draw(screen)	
-				
 		player.update()
 		player.draw()
-		
+
+
+		enim_group.update(player)
+		enim_group.draw(screen)	
+
 
 		true_screen.blit(pygame.transform.scale(screen, true_screen.get_rect().size), (0, 0))
 		pygame.display.flip()
