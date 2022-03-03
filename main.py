@@ -6,7 +6,7 @@ pygame.init()
 
 fps = 8
 clock = pygame.time.Clock()
-width, height = 256, 160
+width, height = 16*16, 9*16
 true_screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
 screen = pygame.Surface((width, height))
 tile_size = 16
@@ -22,13 +22,14 @@ class Enemy(pygame.sprite.Sprite):
 		self.target = True # true for player, false for anti
 		self.targetcool = 1
 		self.sight = 10
+		self.knockback = 3
 		
 	def update(self, pl):
 		self.targetcool -= 1
 		if self.targetcool <= 0:
 			self.target = bool(randint(0, 1))
 			self.targetcool = 32
-		player = (pl if self.target else Player(width/16-pl.x,pl.y))
+		player = (pl if self.target else Player(width/tile_size-pl.x,pl.y))
 		xmove = self.x + ((-abs(self.x - player.x)/(self.x - player.x)) if (self.x - player.x) != 0 else 0)
 		ymove = self.y + ((-abs(self.y - player.y)/(self.y - player.y)) if (self.y - player.y) != 0 else 0)
 		distx = ((player.x-xmove)**2 + (player.y-self.y)**2)**0.5 + randint(-self.sight, self.sight)
@@ -37,29 +38,48 @@ class Enemy(pygame.sprite.Sprite):
 			self.x = xmove
 		else:
 			self.y = ymove
+		if player.sword:
+			if player.sword.x == self.x and pl.sword.y == self.y:
+				self.x += player.sword.d[0]*self.knockback
+				self.y += player.sword.d[1]*self.knockback
 		
 		
+		self.rect.x = self.x*tile_size
+		self.rect.y = self.y*tile_size
 		
-		self.rect.x = self.x*16
-		self.rect.y = self.y*16
+class Weapon:
+	def __init__(self, x, y, d):
+		self.x = x
+		self.y = y
+		self.d = d
+		self.image = pygame.Surface((tile_size, tile_size))
+		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
+		
+	def draw(self):
+		screen.blit(self.image, (self.rect.x, self.rect.y))
 
 class Player:
 	def __init__(self, x, y):
 		self.x = x
 		self.y = y
 		self.image = pygame.Surface((tile_size, tile_size))
-		self.wepimg = pygame.Surface((tile_size, tile_size))
 		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
 		self.dir = [0, 0]
+		self.sword = None
 		self.insafeplace = False
+		self.swordcool = 0
 
 	def draw(self):
 		screen.blit(self.image, (self.rect.x, self.rect.y))
 
 	def update(self):
+		self.sword = None
+		self.swordcool -= 1
 		keys = pygame.key.get_pressed()
-		if keys[K_SPACE] and not self.insafeplace:
-			screen.blit(self.wepimg, ((self.x+self.dir[0])*16, (self.y+self.dir[1])*16))
+		if keys[K_SPACE] and not self.insafeplace and self.swordcool <= 0:
+			self.sword = Weapon(self.x + self.dir[0], self.y + self.dir[1], self.dir)
+			self.sword.draw()
+			self.swordcool = 2
 		elif keys[K_w]:
 			self.dir = [0, -1]
 			self.y -= 1
@@ -74,8 +94,8 @@ class Player:
 			self.x += 1
 				
 				
-		self.rect.y = self.y*16
-		self.rect.x = self.x*16
+		self.rect.y = self.y*tile_size
+		self.rect.x = self.x*tile_size
 
 def main():
 	player = Player(15//2, 9//2)
