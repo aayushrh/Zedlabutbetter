@@ -1,126 +1,131 @@
-import sys
-import pygame
-from pygame import K_w, K_a, K_s, K_d, K_SPACE
+import pygame, sys
 from random import randint
 pygame.init()
+FPS = 60
+CLOCK = pygame.time.Clock()
+W, H = 720, 360
+TRUE_SCREEN = pygame.display.set_mode((W, H), pygame.RESIZABLE)
+SCREEN = pygame.Surface((W, H))
+GROUNDLVL = H
 
-fps = 8
-clock = pygame.time.Clock()
-width, height = 16*16, 9*16
-true_screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-screen = pygame.Surface((width, height))
-tile_size = 16
+def clamp(smallest, n, largest): 
+	return max(smallest, min(n, largest))
 
-class Enemy(pygame.sprite.Sprite):
-	def __init__(self, x, y):
-		super().__init__()
-		self.x = x
-		self.y = y
-		self.image = pygame.Surface((tile_size, tile_size))
-		self.wepimg = pygame.Surface((tile_size, tile_size))
-		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
-		self.target = True # true for player, false for anti
-		self.targetcool = 1
-		self.sight = 10
-		self.knockback = 3
+class Attack:
+	def __init__(self, xo, yo, pl):
+		self.dur = 50
+		self.cooldown = 0
+		self.pl = pl
+		self.xo, self.yo = xo, yo
+		self.image = pygame.Surface((10, 10))
+		self.rect = pygame.Rect((pl.rect.x + xo, pl.rect.y + yo), self.image.get_size())
 		
-	def update(self, pl):
-		self.targetcool -= 1
-		if self.targetcool <= 0:
-			self.target = bool(randint(0, 1))
-			self.targetcool = 32
-		player = (pl if self.target else Player(width/tile_size-pl.x,pl.y))
-		xmove = self.x + ((-abs(self.x - player.x)/(self.x - player.x)) if (self.x - player.x) != 0 else 0)
-		ymove = self.y + ((-abs(self.y - player.y)/(self.y - player.y)) if (self.y - player.y) != 0 else 0)
-		distx = ((player.x-xmove)**2 + (player.y-self.y)**2)**0.5 + randint(-self.sight, self.sight)
-		disty = ((player.x-self.x)**2 + (player.y-ymove)**2)**0.5 + randint(-self.sight, self.sight)
-		if distx < disty:
-			self.x = xmove
-		else:
-			self.y = ymove
-		if player.sword:
-			if player.sword.x == self.x and pl.sword.y == self.y:
-				self.x += player.sword.d[0]*self.knockback
-				self.y += player.sword.d[1]*self.knockback
-		
-		
-		self.rect.x = self.x*tile_size
-		self.rect.y = self.y*tile_size
-		
-class Weapon:
-	def __init__(self, x, y, d):
-		self.x = x
-		self.y = y
-		self.d = d
-		self.image = pygame.Surface((tile_size, tile_size))
-		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
-		
-	def draw(self):
-		screen.blit(self.image, (self.rect.x, self.rect.y))
-
-class Player:
-	def __init__(self, x, y):
-		self.x = x
-		self.y = y
-		self.image = pygame.Surface((tile_size, tile_size))
-		self.rect = pygame.Rect(x*tile_size, y*tile_size, tile_size, tile_size)
-		self.dir = [0, 0]
-		self.sword = None
-		self.insafeplace = False
-		self.swordcool = 0
-
-	def draw(self):
-		screen.blit(self.image, (self.rect.x, self.rect.y))
-
 	def update(self):
-		self.sword = None
-		self.swordcool -= 1
-		keys = pygame.key.get_pressed()
-		if keys[K_SPACE] and not self.insafeplace and self.swordcool <= 0:
-			self.sword = Weapon(self.x + self.dir[0], self.y + self.dir[1], self.dir)
-			self.sword.draw()
-			self.swordcool = 2
-		elif keys[K_w]:
-			self.dir = [0, -1]
-			self.y -= 1
-		elif keys[K_s]:
-			self.dir = [0, 1]
-			self.y += 1
-		elif keys[K_a]:
-			self.dir = [-1, 0]
-			self.x -= 1
-		elif keys[K_d]:
-			self.dir = [1, 0]
-			self.x += 1
-				
-				
-		self.rect.y = self.y*tile_size
-		self.rect.x = self.x*tile_size
+		self.cooldown += 1
+		if self.cooldown >= self.dur:
+			self.end()
+			return False
+		self.rect.x = self.pl.rect.x + self.xo * self.pl.dir
+		self.rect.y = self.pl.rect.y + self.yo * self.pl.dir
+		return True
+			
+	def draw(self):
+		SCREEN.blit(self.image, self.rect)
+
+	def end(self):
+		self.pl.occ = False
+		self.pl.att = None
+
+class Player(pygame.sprite.Sprite):
+	def __init__(self, width, height, x, y, speed, jpheight, keys):
+		super().__init__()
+		self.image = pygame.Surface((width, height))
+		self.rect = pygame.Rect((x, y), self.image.get_size())
+		self.keys = keys
+		self.speed = speed
+		self.acely = 0
+		self.acelx = 0
+		self.onground = True
+		self.jpheight = jpheight
+		self.occ = False
+		self.att = None
+		self.dir = 0
+		
+	def netrualside(self, s):
+		self.occ = True
+		self.att = Attack(-self.rect.width if s == 'l' else self.rect.width, 0, self)
+		
+	def update(self):
+		self.acelx *= 0.6
+		print(round(self.acelx*100))
+		pkeys = pygame.key.get_pressed()
+		self.dir = 0
+		if not self.occ:
+			if pkeys[self.keys["sp"]]:
+				if pkeys[self.keys["lf"]]:
+					self.netrualside('l')
+					self.dir = -1
+				if pkeys[self.keys["rt"]]:
+					self.netrualside('r')
+					self.dir = 1
+			else:
+				if pkeys[self.keys["lf"]]:
+					self.dir = -1
+					self.acelx -= 1
+				if pkeys[self.keys["rt"]]:
+					self.dir = 1
+					self.acelx += 1
+			
+		
+			self.onground = self.rect.bottom >= GROUNDLVL
+			if not self.onground:
+				self.acely += 1
+			else:
+				self.acely = 0
+				self.rect.bottom = GROUNDLVL
+				if pkeys[self.keys["jp"]]:
+					self.acely = -self.jpheight
+		
+		# things to happen regardless of special press
+		
+		if self.att:
+			if self.att.update():
+				self.att.draw()
+		
+		#self.acelx = round(clamp(-2, self.acelx, 2)*10)/10
+		self.rect.x += (self.acelx * self.speed)
+		self.rect.x = clamp(0, self.rect.x, W-self.rect.width)
+		self.rect.y += self.acely
+		
 
 def main():
-	player = Player(15//2, 9//2)
-	
-	enim_group = pygame.sprite.Group()
-	enim_group.add(Enemy(1, 1))
+	plgroup = pygame.sprite.Group()
+	plgroup.add(Player(20, 50, 10, 10, 4, 15, {
+		"lf": pygame.K_a,
+		"rt": pygame.K_d,
+		"jp": pygame.K_w,
+		"sp": pygame.K_s
+	}))
+	plgroup.add(Player(20, 50, W-30, 10, 2, 20, {
+		"lf": pygame.K_LEFT,
+		"rt": pygame.K_RIGHT,
+		"jp": pygame.K_UP,
+		"sp": pygame.K_DOWN
+	}))
 	while True:
-		screen.fill("#FFFFFF")
-
+		SCREEN.fill("#FFFFFF")
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				pygame.quit()
 				sys.exit()
+		
+		plgroup.update()
+		
+		plgroup.draw(SCREEN)
 
-		player.update()
-		player.draw()
-
-
-		enim_group.update(player)
-		enim_group.draw(screen)	
-
-
-		true_screen.blit(pygame.transform.scale(screen, true_screen.get_rect().size), (0, 0))
+		TRUE_SCREEN.blit(pygame.transform.scale(SCREEN, TRUE_SCREEN.get_size()), (0, 0))
 		pygame.display.flip()
-		clock.tick(fps)
+		CLOCK.tick(FPS)
 
 if __name__ == "__main__":
 	main()
