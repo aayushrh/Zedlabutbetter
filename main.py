@@ -14,8 +14,6 @@ class Vec3d:
 		self.x = x
 		self.y = y
 		self.z = z
-	def dotprod(self, v):
-		return abs(self.x*v.x + self.y*v.y + self.z*v.z)
 	def normalize(self):
 		l = math.sqrt(self.x*self.x + self.y*self.y + self.z*self.z)
 		try:
@@ -40,12 +38,16 @@ class Vec3d:
 		newF = Vec3d(target.x - self.x, target.y - self.y, target.z - self.z)
 		newF.normalize()
 		
-		dp = up.dotprod(newF)
+		dp = up.x*newF.x+up.y*newF.y+up.z*newF.z
 		a = Vec3d(newF.x*dp, newF.y*dp, newF.z*dp)
 		newU = Vec3d(up.x-a.x, up.y-a.y, up.z-a.z)
 		newU.normalize()
 		
-		newR = Vec3d(newU.y * newF.z - newU.z * newF.y, newU.z * newF.x - newU.x * newF.z, newU.x * newF.y - newU.y * newF.x)
+		newR = Vec3d()
+		
+		newR.x = newU.y * newF.z - newU.z * newF.y
+		newR.y = newU.z * newF.x - newU.x * newF.z
+		newR.z = newU.x * newF.y - newU.y * newF.x
 		
 		return [[newR.x,newR.y,newR.z,0],
 				  [newU.x,newU.y,newU.z,0],
@@ -53,17 +55,13 @@ class Vec3d:
 				  [self.x,self.y,self.z,1]]
 	def matrixlookat(self, target, up):
 		m = self.matrixpointat(target, up)
-		out = copy.deepcopy(m)
+		out = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
 		out[0][1] = m[1][0]
 		out[0][2] = m[2][0]
-		out[0][1] = 0
 		out[1][0] = m[0][1]
 		out[1][2] = m[2][1]
-		out[1][3] = 0
 		out[1][0] = m[0][1]
 		out[2][0] = m[0][2]
-		out[2][1] = m[1][2]
-		out[2][3] = 0
 		out[3][0] = -(m[3][0] * m[0][0] + m[3][1] * m[1][0] + m[3][2] * m[2][0])
 		out[3][1] = -(m[3][0] * m[0][1] + m[3][1] * m[1][1] + m[3][2] * m[2][1])
 		out[3][2] = -(m[3][0] * m[0][2] + m[3][1] * m[1][2] + m[3][2] * m[2][2])
@@ -148,11 +146,11 @@ class Engine:
 		if keys[pygame.K_s]:
 			self.vcam.z -= 8 * (1/fps)
 		if keys[pygame.K_a]:
-			self.vcam.x += 8 * (1/fps)
-		if keys[pygame.K_d]:
 			self.vcam.x -= 8 * (1/fps)
+		if keys[pygame.K_d]:
+			self.vcam.x += 8 * (1/fps)
 
-		#self.theta += 1 * 1/fps
+		self.theta += 1 * 1/fps
 
 		self.matcam = self.vcam.matrixpointat(self.vtar, self.vup)
 		self.matview = self.vcam.matrixlookat(self.vtar, self.vup)
@@ -174,17 +172,14 @@ class Engine:
 		tristodraw = []
 		
 		for tri in self.cube.tris:
-		
-			rotated = copy.deepcopy(tri)
-			
 			translated = copy.deepcopy(tri)
 			
 			translated = translated.matrixmultiply(self.matrotz)
 			translated = translated.matrixmultiply(self.matrotx)
 			
-			translated.p1.z += 15
-			translated.p2.z += 15
-			translated.p3.z += 15
+			translated.p1.z += 8
+			translated.p2.z += 8
+			translated.p3.z += 8
 			
 			tristodraw.append(translated)
 		
@@ -193,7 +188,10 @@ class Engine:
 		for tri in tristodraw:
 			line1 = Vec3d(tri.p2.x - tri.p1.x, tri.p2.y - tri.p1.y, tri.p2.z - tri.p1.z)
 			line2 = Vec3d(tri.p3.x - tri.p1.x, tri.p3.y - tri.p1.y, tri.p3.z - tri.p1.z)
-			normal = Vec3d(line1.y * line2.z - line1.z * line2.y, line1.z * line2.x - line1.x * line2.z, line1.x * line2.y - line1.y * line2.x)
+			normal = Vec3d()
+			normal.x = line1.y * line2.z - line1.z * line2.y
+			normal.y = line1.z * line2.x - line1.x * line2.z
+			normal.z = line1.x * line2.y - line1.y * line2.x
 			normal.normalize()
 			
 			if (normal.x*(tri.p1.x - self.vcam.x) + normal.y*(tri.p1.y - self.vcam.y) + normal.z*(tri.p1.z - self.vcam.z) < 0) or "all" in self.rendermode:
@@ -205,7 +203,7 @@ class Engine:
 				
 				lightdir = Vec3d(0, 0, -1)
 				lightdir.normalize()
-				dp = normal.dotprod(lightdir)
+				dp = max(0.1, lightdir.x*normal.x + lightdir.y*normal.y + lightdir.z*normal.z)
 				projected = viewed.matrixmultiply(self.matproj)
 				projected.col = (dp*255,dp*255,dp*255)
 
