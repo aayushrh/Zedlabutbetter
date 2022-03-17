@@ -8,7 +8,29 @@ width, height = 256, 256
 true_screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
 screen = pygame.Surface((width, height))
 
+def inverse(m):
+		out = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+		out[0][1] = m[1][0]
+		out[0][2] = m[2][0]
+		out[1][0] = m[0][1]
+		out[1][2] = m[2][1]
+		out[1][0] = m[0][1]
+		out[2][0] = m[0][2]
+		out[3][0] = -(m[3][0] * m[0][0] + m[3][1] * m[1][0] + m[3][2] * m[2][0])
+		out[3][1] = -(m[3][0] * m[0][1] + m[3][1] * m[1][1] + m[3][2] * m[2][1])
+		out[3][2] = -(m[3][0] * m[0][2] + m[3][1] * m[1][2] + m[3][2] * m[2][2])
+		out[3][3] = 1
+		return out
 
+def rotmatY(AngleRad):
+	matrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+	matrix[0][0] = math.cos(AngleRad)
+	matrix[0][2] = math.sin(AngleRad)
+	matrix[2][0] = -math.sin(AngleRad)
+	matrix[1][1] = 1
+	matrix[2][2] = math.cos(AngleRad)
+	matrix[3][3] = 1
+	
 class Vec3d:
 	def __init__(self, x=None, y=None, z=None):
 		self.x = x
@@ -33,39 +55,6 @@ class Vec3d:
 			out.x /= w
 			out.y /= w
 			out.z /= w
-		return out
-	def matrixpointat(self, target, up):
-		newF = Vec3d(target.x - self.x, target.y - self.y, target.z - self.z)
-		newF.normalize()
-		
-		dp = up.x*newF.x+up.y*newF.y+up.z*newF.z
-		a = Vec3d(newF.x*dp, newF.y*dp, newF.z*dp)
-		newU = Vec3d(up.x-a.x, up.y-a.y, up.z-a.z)
-		newU.normalize()
-		
-		newR = Vec3d()
-		
-		newR.x = newU.y * newF.z - newU.z * newF.y
-		newR.y = newU.z * newF.x - newU.x * newF.z
-		newR.z = newU.x * newF.y - newU.y * newF.x
-		
-		return [[newR.x,newR.y,newR.z,0],
-				  [newU.x,newU.y,newU.z,0],
-				  [newF.x,newF.y,newF.z,0],
-				  [self.x,self.y,self.z,1]]
-	def matrixlookat(self, target, up):
-		m = self.matrixpointat(target, up)
-		out = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
-		out[0][1] = m[1][0]
-		out[0][2] = m[2][0]
-		out[1][0] = m[0][1]
-		out[1][2] = m[2][1]
-		out[1][0] = m[0][1]
-		out[2][0] = m[0][2]
-		out[3][0] = -(m[3][0] * m[0][0] + m[3][1] * m[1][0] + m[3][2] * m[2][0])
-		out[3][1] = -(m[3][0] * m[0][1] + m[3][1] * m[1][1] + m[3][2] * m[2][1])
-		out[3][2] = -(m[3][0] * m[0][2] + m[3][1] * m[1][2] + m[3][2] * m[2][2])
-		out[3][3] = 1
 		return out
 		
 class Tri:
@@ -110,12 +99,12 @@ class Engine:
 		
 		self.vcam = Vec3d(0, 0, 0)
 		self.vlook = Vec3d(0, 0, 1)
-		self.rendermode = "normal wireframe"
+		self.rendermode = "normal"
 		
 		self.nearclip = 0.1
 		self.farclip = 1000
 		self.fov = 90
-		self.aspectratio = width/height
+		self.aspectratio = height/width
 		self.fovrad = (1/math.tan(radians(self.fov * 0.5)))
 
 		self.matproj = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
@@ -128,32 +117,53 @@ class Engine:
 		self.theta = 0
 		self.matrotx = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
 		self.matrotz = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
-		
-		self.vup = Vec3d(0, 1, 0)
-		self.vtar = Vec3d(self.vcam.x+self.vlook.x, self.vcam.y+self.vlook.y, self.vcam.z+self.vlook.z)
-		
+		self.camroty = 0
 
 	def update(self):
-		
-		
 		keys = pygame.key.get_pressed()
 		if keys[pygame.K_q]:
 			self.vcam.y += 8 * (1/fps)
 		if keys[pygame.K_e]:
 			self.vcam.y -= 8 * (1/fps)
 		if keys[pygame.K_w]:
-			self.vcam.z += 8 * (1/fps)
-		if keys[pygame.K_s]:
 			self.vcam.z -= 8 * (1/fps)
+		if keys[pygame.K_s]:
+			self.vcam.z += 8 * (1/fps)
 		if keys[pygame.K_a]:
-			self.vcam.x -= 8 * (1/fps)
+			self.camroty += 8 * (1/fps)
 		if keys[pygame.K_d]:
-			self.vcam.x += 8 * (1/fps)
-
-		self.theta += 1 * 1/fps
-
-		self.matcam = self.vcam.matrixpointat(self.vtar, self.vup)
-		self.matview = self.vcam.matrixlookat(self.vtar, self.vup)
+			self.camroty -= 8 * (1/fps)
+		
+		#self.theta += 1 * 1/fps
+		
+		self.vup = Vec3d(0, 1, 0)
+		self.vtar = Vec3d(self.vcam.x+self.vlook.x, self.vcam.y+self.vlook.y, self.vcam.z+self.vlook.z)
+		self.camrotmat = rotmatY(self.camroty)
+		self.vlook = self.vtar.matrixmultiply(self.camrotmat)
+		self.vtar = Vec3d(self.vcam.x + self.vlook.x, self.vcam.y + self.vlook.y, self.vcam.z + self.vlook.z)
+		self.vcam = Vec3d(0, 0, 0)
+		
+		newF = Vec3d(self.vtar.x - self.vcam.x, self.vtar.y - self.vcam.y, self.vtar.z - self.vcam.z)
+		newF.normalize()
+		
+		dp = self.vup.x*newF.x+self.vup.y*newF.y+self.vup.z*newF.z
+		a = Vec3d(newF.x*dp, newF.y*dp, newF.z*dp)
+		newU = Vec3d(self.vup.x-a.x, self.vup.y-a.y, self.vup.z-a.z)
+		newU.normalize()
+		
+		newR = Vec3d()
+		
+		newR.x = newU.y * newF.z - newU.z * newF.y
+		newR.y = newU.z * newF.x - newU.x * newF.z
+		newR.z = newU.x * newF.y - newU.y * newF.x
+		
+		self.matcam =  [[newR.x,newR.y,newR.z,0],
+				  [newU.x,newU.y,newU.z,0],
+				  [newF.x,newF.y,newF.z,0],
+				  [self.vcam.x,self.vcam.y,self.vcam.z,1]]
+		
+		
+		self.matview = inverse(self.matcam)
 		
 		self.matrotz[0][0] = math.cos(self.theta)
 		self.matrotz[0][1] = math.sin(self.theta)
@@ -193,13 +203,13 @@ class Engine:
 			normal.y = line1.z * line2.x - line1.x * line2.z
 			normal.z = line1.x * line2.y - line1.y * line2.x
 			normal.normalize()
-			
-			if (normal.x*(tri.p1.x - self.vcam.x) + normal.y*(tri.p1.y - self.vcam.y) + normal.z*(tri.p1.z - self.vcam.z) < 0) or "all" in self.rendermode:
+			camray = Vec3d(tri.p1.x - self.vcam.x, tri.p1.y - self.vcam.y, tri.p1.z - self.vcam.z)
+			if ((normal.x*camray.x + normal.y*camray.y + normal.z*camray.z) < 0) or "all" in self.rendermode:
 				
-				viewed = Tri()
-				viewed.p1 = tri.p1.matrixmultiply(self.matview)
-				viewed.p2 = tri.p2.matrixmultiply(self.matview)
-				viewed.p3 = tri.p3.matrixmultiply(self.matview)
+				viewed = copy.deepcopy(tri)
+				viewed.p1 = tri.p1.matrixmultiply(self.matcam)
+				viewed.p2 = tri.p2.matrixmultiply(self.matcam)
+				viewed.p3 = tri.p3.matrixmultiply(self.matcam)
 				
 				lightdir = Vec3d(0, 0, -1)
 				lightdir.normalize()
