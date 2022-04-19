@@ -1,11 +1,11 @@
 import sys
 import pygame
+from level import level
 
 pygame.init()
 
-WIDTH, HEIGHT = 1280, 720
-PWIDTH, PHEIGHT = 10, 10
-GROUND_LVL = HEIGHT
+WIDTH, HEIGHT = 1024, 576
+TDIMS = 32
 GRAVITY = -1
 
 FPS = 60
@@ -16,10 +16,17 @@ SCREEN = pygame.Surface((WIDTH, HEIGHT))
 BLACK = "#000000"
 WHITE = "#FFFFFF"
 
-
+class Tile(pygame.sprite.Sprite):
+	def __init__(self, x, y):
+		super().__init__()
+		self.image = pygame.Surface((TDIMS, TDIMS))
+		self.image.fill(WHITE)
+		self.rect = pygame.Rect((x, y), self.image.get_size())
+		
+			
 class Player:
 	def __init__(self):
-		self.image = pygame.Surface((PWIDTH, PHEIGHT))
+		self.image = pygame.Surface((TDIMS, TDIMS))
 		self.rect = pygame.Rect((0, 0), self.image.get_size())
 		self.image.fill(WHITE)
 
@@ -28,28 +35,48 @@ class Player:
 		self.friction = 0.9
 		self.onground = False
 		self.speed = 1
-		self.jump = 15
+		self.jump = 16
 
-	def update(self):
+	def update(self, tiles):
 		keys = pygame.key.get_pressed()
 
 		if keys[pygame.K_a]:
 			self.xacel -= self.speed
 		if keys[pygame.K_d]:
 			self.xacel += self.speed
-
-		if self.rect.bottom >= GROUND_LVL:
-			self.onground = True
-			self.yacel = 0
-			self.rect.bottom = GROUND_LVL
-		else:
-			self.onground = False
-			self.yacel -= GRAVITY
-
 		if keys[pygame.K_SPACE] and self.onground:
 			self.yacel -= self.jump
 			self.onground = False
+			self.rect.bottom -= 1
+			
+		self.onground = False
+		for t in tiles:
+			if self.rect.colliderect(t):
+				if self.rect.top < t.rect.bottom and self.rect.y > t.rect.y:
+					shouldapply = True
+					for newt in tiles:
+						if newt.rect.y + 32 == t.rect.y:
+							shouldapply = False
+							break
+					if shouldapply:
+						self.yacel = -GRAVITY
+						self.rect.y += abs(self.rect.y - t.rect.y)
+				if self.rect.colliderect(t):
+					if (t.rect.top < self.rect.y < t.rect.bottom) and (keys[pygame.K_a] or keys[pygame.K_d]):
+						if (self.rect.right >= t.rect.left and self.rect.x < t.rect.x) or (self.rect.left <= t.rect.right and self.rect.x > t.rect.x):
+							self.xacel *= -2
+							self.onground = False
+					elif self.rect.bottom > t.rect.top and self.rect.y < t.rect.y:
+						self.yacel = 0
+						self.rect.bottom = t.rect.top + 1
+						self.onground = True
 
+		if self.onground:
+			self.yacel = 0
+		else:
+			self.yacel -= GRAVITY
+
+			
 		self.xacel *= self.friction
 		self.rect.x += round(self.xacel)
 		self.rect.y += round(self.yacel)
@@ -60,7 +87,18 @@ class Player:
 def main():
 
 	player = Player()
-
+	
+	tilegroup = pygame.sprite.Group()
+	
+	x, y = 0, 0
+	for r in level:
+		for t in r:
+			if t == 1:
+				tilegroup.add(Tile(x, y))
+			x += 32
+		y += 32
+		x = 0
+				
 	while True:
 		SCREEN.fill(BLACK)
 		for event in pygame.event.get():
@@ -68,9 +106,11 @@ def main():
 				pygame.quit()
 				sys.exit()
 
-		player.update()
+		player.update(tilegroup.sprites())
+		tilegroup.update()
 
 		player.draw()
+		tilegroup.draw(SCREEN)
 
 		TRUE_SCREEN.blit(pygame.transform.scale(SCREEN, TRUE_SCREEN.get_size()), (0, 0))
 		pygame.display.flip()
