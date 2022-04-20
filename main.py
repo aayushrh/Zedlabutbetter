@@ -1,6 +1,6 @@
 import sys
 import pygame
-from level import level
+from level import start
 
 pygame.init()
 
@@ -24,7 +24,7 @@ class Tile(pygame.sprite.Sprite):
 		self.image.fill(WHITE)
 		self.rect = pygame.Rect((x, y), self.image.get_size())
 
-
+		
 class Player:
 	def __init__(self):
 		self.image = pygame.Surface((TDIMS, TDIMS))
@@ -51,15 +51,19 @@ class Player:
 			self.rect.bottom -= 1
 
 		self.onground = False
-		shouldmove = True
 		for t in tiles:
-			if self.rect.colliderect(t):
-				if self.rect.bottom > t.rect.top:
+			if self.rect.colliderect(t.rect):
+				if self.rect.y >= t.rect.y:
+					self.yacel = -GRAVITY
+					self.onground = False
+				elif self.rect.bottom > t.rect.top:
 					self.yacel = 0
 					self.rect.bottom = t.rect.top + 1
 					self.onground = True
-				if self.rect.y <= t.rect.bottom:
-					print("e")
+				else:
+					if self.rect.centerx > t.rect.centerx:
+						while self.rect.colliderect(t.rect):
+							self.rect.x += 1
 
 		if self.onground:
 			self.yacel = 0
@@ -67,9 +71,8 @@ class Player:
 			self.yacel -= GRAVITY
 
 		self.xacel *= self.friction
-		if shouldmove:
-			self.rect.x += round(self.xacel)
-			self.rect.y += round(self.yacel)
+		self.rect.x += round(self.xacel)
+		self.rect.y += round(self.yacel)
 
 	def draw(self):
 		SCREEN.blit(self.image, self.rect)
@@ -81,7 +84,7 @@ def main():
 	tilegroup = pygame.sprite.Group()
 
 	x, y = 0, 0
-	for r in level:
+	for r in start:
 		for t in r:
 			if t == 1:
 				tilegroup.add(Tile(x, y))
@@ -97,7 +100,7 @@ def main():
 				sys.exit()
 
 		player.update(tilegroup.sprites())
-		tilegroup.update()
+		#tilegroup.update()
 
 		player.draw()
 		tilegroup.draw(SCREEN)
