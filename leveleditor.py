@@ -1,7 +1,5 @@
 import sys, pygame
 from math import floor
-from level import start
-from copy import deepcopy as copy
 
 pygame.init()
 
@@ -32,12 +30,26 @@ def main():
 		SCREEN.fill(BLACK)
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
+				matrix = []
+				for y in range(0, HEIGHT, 32):
+					toadd = []
+					for x in range(0, WIDTH, 32):
+						added = False
+						print(x)
+						for t in tilegroup.sprites():
+							if t.rect.x == x and t.rect.y == y:
+								toadd.append(1)
+								added = True
+								break
+						if not added:
+							toadd.append(0)
+					matrix.append(toadd)
 				
-				tiles = tilegroup.sprites()
-				
-				
-				with open("testlevel.py", 'a') as f:
-					f.write(f"\n{sys.argv[1]} = {level}")
+				with open("level.py", 'a') as f:
+					try:
+						f.write(f"\n{sys.argv[1]} = {matrix}")
+					except:
+						f.write(f"\ntime{pygame.time.get_ticks()} = {matrix}")
 				
 				pygame.quit()
 				sys.exit()
@@ -53,6 +65,14 @@ def main():
 					break
 			if shouldadd:
 				tilegroup.add(Tile(x, y))
+		if pygame.mouse.get_pressed()[2]:
+			x, y = pygame.mouse.get_pos()
+			x = floor(x/32)*32
+			y = floor(y/32)*32
+			for t in tilegroup.sprites():
+				if t.rect.x == x and t.rect.y == y:
+					tilegroup.remove(t)
+					break
 				
 		tilegroup.update()
 
