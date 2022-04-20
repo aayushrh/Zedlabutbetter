@@ -28,7 +28,7 @@ class Tile(pygame.sprite.Sprite):
 class Player:
 	def __init__(self):
 		self.image = pygame.Surface((TDIMS, TDIMS))
-		self.rect = pygame.Rect((0, 0), self.image.get_size())
+		self.rect = pygame.Rect((WIDTH/2, 0), self.image.get_size())
 		self.image.fill(WHITE)
 
 		self.xacel = 0
@@ -56,14 +56,21 @@ class Player:
 				if self.rect.y >= t.rect.y:
 					self.yacel = -GRAVITY
 					self.onground = False
-				elif self.rect.bottom > t.rect.top:
+				if self.rect.bottom > t.rect.top > self.rect.bottom - TDIMS:
 					self.yacel = 0
 					self.rect.bottom = t.rect.top + 1
 					self.onground = True
 				else:
-					if self.rect.centerx > t.rect.centerx:
+					if keys[pygame.K_d] or self.rect.centerx < t.rect.centerx:
+						while self.rect.colliderect(t.rect):
+							self.rect.x -= 1
+						self.rect.x -= 1
+						self.xacel *= -1
+					if keys[pygame.K_a] or self.rect.centerx > t.rect.centerx:
 						while self.rect.colliderect(t.rect):
 							self.rect.x += 1
+						self.rect.x += 1
+						self.xacel *= -1
 
 		if self.onground:
 			self.yacel = 0
