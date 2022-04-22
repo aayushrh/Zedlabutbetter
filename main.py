@@ -1,7 +1,7 @@
 import sys
 import pygame
 import level
-from random import randint as random
+from random import randint
 
 pygame.init()
 
@@ -57,9 +57,9 @@ class Player:
 
 		self.xacel = 0
 		self.yacel = 0
-		self.friction = 0.9
+		self.friction = 0.75
 		self.onground = False
-		self.speed = 1
+		self.speed = 2
 		self.jump = 16
 		self.offscreen = "no"  # can be no, up, dw, lf, rt
 							   # used to change level
@@ -164,7 +164,7 @@ def main():
 		if player.offscreen != "no" and ((player.offscreen == "up" and lastdir != "dw") or (player.offscreen == "lf" and lastdir != "rt") or (player.offscreen == "rt" and lastdir != "lf") or (player.offscreen == "dw" and lastdir != "up")):
 			while True:
 				try:
-					startpos = loadlevel(eval(f"level.{player.offscreen}{random(0, 20)}"), tilegroup)
+					startpos = loadlevel(eval(f"level.{player.offscreen}2"), tilegroup)
 					player.rect.x, player.rect.y = startpos
 					lastdir = player.offscreen
 					if player.offscreen == "up":
