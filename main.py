@@ -164,7 +164,7 @@ def main():
 		if player.offscreen != "no" and ((player.offscreen == "up" and lastdir != "dw") or (player.offscreen == "lf" and lastdir != "rt") or (player.offscreen == "rt" and lastdir != "lf") or (player.offscreen == "dw" and lastdir != "up")):
 			while True:
 				try:
-					startpos = loadlevel(eval(f"level.{player.offscreen}2"), tilegroup)
+					startpos = loadlevel(eval(f"level.{player.offscreen}{randint(0, 20)}"), tilegroup)
 					player.rect.x, player.rect.y = startpos
 					lastdir = player.offscreen
 					if player.offscreen == "up":
