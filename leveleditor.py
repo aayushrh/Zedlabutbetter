@@ -69,12 +69,13 @@ def main():
 						if not added:
 							toadd.append(0 if ((x, y) != startpos) else 2)
 					matrix.append(toadd)
-				
-				with open("level.py", 'a') as f:
-					try:
-						f.write(f"\n{sys.argv[1]} = {matrix}")
-					except:
-						f.write(f"\ntime{pygame.time.get_ticks()} = {matrix}")
+				out = ""
+				with open("level.py", 'r') as f:
+					for l in f.read().split('\n'):
+						if (not (sys.argv[1] in l)) and (not (l == '')):
+							out += l + '\n'
+				with open("level.py", 'w') as f:
+					f.write(f"{out}\n{sys.argv[1]} = {matrix}")
 				
 				pygame.quit()
 				sys.exit()
