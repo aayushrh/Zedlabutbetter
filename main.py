@@ -17,6 +17,7 @@ SCREEN = pygame.Surface((WIDTH, HEIGHT))
 BLACK = "#000000"
 WHITE = "#FFFFFF"
 
+
 # returns startpos
 def loadlevel(level, tilegroup):
 	tilegroup.empty()
@@ -48,7 +49,7 @@ class Tile(pygame.sprite.Sprite):
 		self.col = (WHITE if self.type != 1 else BLACK)
 		self.image.fill(self.col)
 
-		
+
 class Player:
 	def __init__(self, pos):
 		self.image = pygame.Surface((TDIMS, TDIMS))
@@ -62,10 +63,10 @@ class Player:
 		self.speed = 2
 		self.jump = 16
 		self.offscreen = "no"  # can be no, up, dw, lf, rt
-							   # used to change level
+		# used to change level
 		self.dead = False
-		
-		self.save = pos
+
+		self.save = pos + (0, 0)
 		self.pause = False
 
 	def update(self, tiles):
@@ -81,7 +82,9 @@ class Player:
 			self.onground = False
 			self.rect.bottom -= 1
 		if keys[pygame.K_TAB]:
-			self.rect.x, self.rect.y = self.save
+			self.rect.x, self.rect.y, self.xacel, self.yacel = self.save
+		if keys[pygame.K_LSHIFT]:
+			self.save = (self.rect.x, self.rect.y, self.xacel, self.yacel)
 
 		# collision
 		self.onground = False
@@ -103,7 +106,7 @@ class Player:
 						while self.rect.colliderect(t.rect):
 							self.rect.x -= 1
 							counter += 1
-						if counter >= TDIMS/2:
+						if counter >= TDIMS / 2:
 							self.rect.x += counter
 						else:
 							self.rect.x -= 1
@@ -112,22 +115,22 @@ class Player:
 						while self.rect.colliderect(t.rect):
 							self.rect.x += 1
 							counter += 1
-						if counter >= TDIMS/2:
+						if counter >= TDIMS / 2:
 							self.rect.x -= counter
 						else:
 							self.rect.x += 1
 							self.xacel *= -1.1
-		
+
 		# applying gravity and friction
 		if self.onground:
 			self.yacel = 0
 		else:
 			self.yacel -= GRAVITY
-		self.xacel *= self.friction
+		self.xacel *= self.friction * (1 if self.onground else 1.1)
 		# applying acels to rect
 		self.rect.x += round(self.xacel)
 		self.rect.y += round(self.yacel)
-		
+
 		# checking if offscreen
 		if self.rect.left < 0:
 			self.offscreen = "lf"
@@ -146,15 +149,14 @@ class Player:
 
 
 def main():
-
 	tilegroup = pygame.sprite.Group()
 
 	startpos = loadlevel(level.start, tilegroup)
-		
+
 	player = Player(startpos)
-	
+
 	lastdir = "dw"
-	
+
 	levelscount = 0
 	oldtime = pygame.time.get_ticks()
 
@@ -170,9 +172,11 @@ def main():
 			main()
 			return 0
 		if levelscount >= 5:
-			print((pygame.time.get_ticks()-oldtime)/1000)
+			print((pygame.time.get_ticks() - oldtime) / 1000)
 			return 0
-		if player.offscreen != "no" and ((player.offscreen == "up" and lastdir != "dw") or (player.offscreen == "lf" and lastdir != "rt") or (player.offscreen == "rt" and lastdir != "lf") or (player.offscreen == "dw" and lastdir != "up")):
+		if player.offscreen != "no" and (
+				(player.offscreen == "up" and lastdir != "dw") or (player.offscreen == "lf" and lastdir != "rt") or (
+				player.offscreen == "rt" and lastdir != "lf") or (player.offscreen == "dw" and lastdir != "up")):
 			while True:
 				try:
 					startpos = loadlevel(eval(f"level.{player.offscreen}{randint(0, 20)}"), tilegroup)
@@ -181,10 +185,11 @@ def main():
 					if player.offscreen == "up":
 						player.yacel = -player.jump
 					levelscount += 1
+					player.save = startpos + (0, 0)
 					break
 				except AttributeError:
 					continue
-				
+
 		player.draw()
 		tilegroup.draw(SCREEN)
 
