@@ -64,6 +64,9 @@ class Player:
 		self.offscreen = "no"  # can be no, up, dw, lf, rt
 							   # used to change level
 		self.dead = False
+		
+		self.save = pos
+		self.pause = False
 
 	def update(self, tiles):
 		# input
@@ -77,6 +80,8 @@ class Player:
 			self.yacel -= self.jump
 			self.onground = False
 			self.rect.bottom -= 1
+		if keys[pygame.K_TAB]:
+			self.rect.x, self.rect.y = self.save
 
 		# collision
 		self.onground = False
@@ -149,6 +154,9 @@ def main():
 	player = Player(startpos)
 	
 	lastdir = "dw"
+	
+	levelscount = 0
+	oldtime = pygame.time.get_ticks()
 
 	while True:
 		SCREEN.fill(BLACK)
@@ -161,6 +169,9 @@ def main():
 		if player.dead:
 			main()
 			return 0
+		if levelscount >= 5:
+			print((pygame.time.get_ticks()-oldtime)/1000)
+			return 0
 		if player.offscreen != "no" and ((player.offscreen == "up" and lastdir != "dw") or (player.offscreen == "lf" and lastdir != "rt") or (player.offscreen == "rt" and lastdir != "lf") or (player.offscreen == "dw" and lastdir != "up")):
 			while True:
 				try:
@@ -169,6 +180,7 @@ def main():
 					lastdir = player.offscreen
 					if player.offscreen == "up":
 						player.yacel = -player.jump
+					levelscount += 1
 					break
 				except AttributeError:
 					continue
